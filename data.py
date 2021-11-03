@@ -1,5 +1,7 @@
 from unicodedata import normalize
 from utils import *
+import random
+import torch
 SOS_TOKEN = 0
 EOS_TOKEN = 1
 
@@ -12,8 +14,8 @@ english_prefixes = ("i am", "he is", "i m ", "he is", "he s " "she is", "she s",
 class Vocabulary:
     def __init__(self, language_name):
         self.language_name = language_name
-        self.word_to_index = {}
-        self.word_to_count = {}
+        self.word_to_index = {"EOS": EOS_TOKEN, "SOS": SOS_TOKEN}
+        self.word_to_count = {"EOS": 1, "SOS":1}
         self.index_to_word = {SOS_TOKEN: "SOS", EOS_TOKEN: "EOS"}
         self.num_words = 2
         
@@ -47,7 +49,7 @@ class TranslationDataset:
         self.input_vocab = Vocabulary(language_name1)
         self.target_vocab = Vocabulary(language_name2)
         #elem for elem in lst if elem %2 == 0
-        pairs = [pair for pair in pairs if self.is_simple_sentence(pair)]
+        self.pairs = [pair for pair in pairs if self.is_simple_sentence(pair)]
         # this makes the pairs only the one with simple sentences
         for input_pair, target_pair in pairs:
             self.input_vocab.add_phrase(input_pair)
@@ -63,6 +65,36 @@ class TranslationDataset:
         cond3 = pair[0].startswith(english_prefixes) # using starts with to show if it starts with an english prefixes
 
         return(cond1 and cond2 and cond3) #returns true or false based on this 
+
+    def sentenceToIndicies(self, sentence, vocab):
+        indicies = []
+
+
+        words = sentence.split(" ")
+        for word in words:
+            idx = vocab.word_to_index[word]
+            indicies.append(idx)
+
+        indicies.append(EOS_TOKEN)
+        return indicies
+
+
+
+    def get_random_sample(self):
+        rand_idx = random.randint(0,len(self.pairs)-1) # this gets a random pair
+        pair = self.pairs[rand_idx]
+        lang1_indicies = self.sentenceToIndicies(pair[0], self.input_vocab)
+        lang2_indicies = self.sentenceToIndicies(pair[1], self.target_vocab)
+
+        lang1_idx_tensor = torch.tensor(lang1_indicies,dtype = torch.long)
+        lang2_idx_tensor = torch.tensor(lang2_indicies, dtype = torch.long)
+
+        return lang1_idx_tensor, lang2_idx_tensor
+
+        # making them into tensors
+
+
+        
 
 
         
