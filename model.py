@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class LSTMCell(nn.Module):
+    
     def __init__(self, input_dim, hidden_dim):
+        super().__init__()
         self.lin_f = nn.Linear(input_dim+hidden_dim, hidden_dim) # this outputs to what C_t-1 is
         self.lin_i = nn.Linear(input_dim + hidden_dim, hidden_dim)
         self.lin_c = nn.Linear(input_dim + hidden_dim,hidden_dim)
@@ -13,8 +16,11 @@ class LSTMCell(nn.Module):
 
     def forward(self,x,state):
         h,c, = state # unpacking a tuple
-        xh = torch.cat([x,h], dim=1) # concatenating x and h
+        xh = torch.cat([x,h], dim=1) # concatenating x and h #this has shape 512
         f = self.sigmoid(self.lin_f(xh)) # input flows through the linear layers, and then passes through a sigmoid function
+        # f has shape 256 because of the self.lin_f
+        # check the definition of lin_f
+
         # f is the values we are forgetting
         # after this line we get a tensor of weights
         # Update path
@@ -41,46 +47,39 @@ class LSTMCell(nn.Module):
 
 
 
-
-
-
-
 class Encoder(nn.Module):
     def __init__(self, input_dim, hidden_dim):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.embedding = nn.Embedding(input_dim, hidden_dim)
-        self.lstm = LSTMCell(input_dim, hidden_dim)
+        self.lstm = LSTMCell(hidden_dim, hidden_dim)
 
 
-
-
-
-    def forward(self,x,hidden): # x refers to the input
-        x = self.embedding(x)
-        output, state = self.lstm(x, hidden)
+    def forward(self,x,state): # x refers to the input
+        x = self.embedding(x).unsqueeze(0) #this makes x into a rank 2 tensor
+        output, state = self.lstm(x, state)
         return output, state
 
 
     def init_hidden(self):
-        return torch.zeros(1,1,self.hidden_dim)
+        return torch.zeros(1,self.hidden_dim)
 
 
 # the embedding layer is basicallyt he list of one+hot encoding
 
 
-class Decoder(nn.MOdule):
+class Decoder(nn.Module):
     def __init__(self, hidden_dim, output_dim):
         super().__init__()
         self.hidden_dim = hidden_dim # we need to access the hidden dim
         self.embedding = nn.Embedding(output_dim, hidden_dim)
         self.lstm = LSTMCell(hidden_dim, hidden_dim) # we want it to output a hidden dim because 
         self.lin_out = nn.Linear(hidden_dim,output_dim)
-        self.log_softmax = 
+        self.log_softmax = nn.LogSoftmax(dim=1)
 
 
     def init_hidden(self):
-        return torch.zeros(1,1,self.hidden_dim)
+        return torch.zeros(1,self.hidden_dim)
 
 
     def forward(self,x,hidden):
