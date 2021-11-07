@@ -32,6 +32,24 @@ class Vocabulary:
         for word in words:
             self.add_word(word)
 
+
+def create_sanitized_dataset(dataset_path):
+    lines = open(dataset_path, encoding ='utf-8').read().strip().split("\n")
+    n = 8
+    pairs = [[normalize_word(word) for word in line.split('\t')] for line in lines]
+    with open('data/eng_fr_train.txt', 'w') as f:
+        with open('data/eng_fr_val.txt', 'w') as f2:
+            for pair in pairs:
+                if(len(pair[0].split(' ')) !=8 ): # we need all the sentences to have the same length to stack them
+                    continue
+                if(random.random() < 0.8):
+
+                    f.write(f"{pair[0]}\t{pair[1]}\n")
+                else:
+                    f2.write(f"{pair[0]}\t{pair[1]}\n")
+
+
+
 class TranslationDataset:
     def __init__(self, dataset_path, language_name1, language_name2):
         self.dataset_path = dataset_path
@@ -42,7 +60,9 @@ class TranslationDataset:
         # the delimiter between the english and french is the tab
         # we want to split on the tab therefore
         # we want to create english french pairs
-        pairs = [[normalize_word(word) for word in line.split('\t')] for line in lines]
+        #pairs = [[normalize_word(word) for word in line.split('\t')] for line in lines]
+        pairs = [line.split('\t') for line in lines] #line.split gives a list for all the 
+        
         #this normalizes all the words in the english and french pairs
         # so for example ['go', 'va !']
         # the outer list comprehension does this for all the pairs in the dataset
@@ -56,6 +76,21 @@ class TranslationDataset:
             self.target_vocab.add_phrase(target_pair)
             #this adds english and french words tot he inuput vocab and target vocab classes
 
+
+    def __len__(self):
+        return len(self.pairs) # this returns the length of a dataset
+
+
+    # this is a python built in method that gets an item 
+    def __getitem__(self, idx): 
+        pair = self.pairs[idx]
+        lang1_indicies = self.sentenceToIndicies(pair[0], self.input_vocab)
+        lang2_indicies = self.sentenceToIndicies(pair[1], self.target_vocab)
+
+        lang1_idx_tensor = torch.tensor(lang1_indicies,dtype = torch.long)
+        lang2_idx_tensor = torch.tensor(lang2_indicies, dtype = torch.long)
+
+        return lang1_idx_tensor, lang2_idx_tensor
 
 
 
@@ -79,19 +114,25 @@ class TranslationDataset:
         return indicies
 
 
+    def indicies_to_sentence(self, indicies, vocab):
+        sentence = ""
+        for idx in indicies:
+            sentence+= vocab.index_to_word[idx]
+
+        return sentence
+
+
+
+
+
+
+
 
     def get_random_sample(self):
         rand_idx = random.randint(0,len(self.pairs)-1) # this gets a random pair
-        pair = self.pairs[rand_idx]
-        lang1_indicies = self.sentenceToIndicies(pair[0], self.input_vocab)
-        lang2_indicies = self.sentenceToIndicies(pair[1], self.target_vocab)
+        return self[rand_idx]
 
-        lang1_idx_tensor = torch.tensor(lang1_indicies,dtype = torch.long)
-        lang2_idx_tensor = torch.tensor(lang2_indicies, dtype = torch.long)
-
-        return lang1_idx_tensor, lang2_idx_tensor
-
-        # making them into tensors
+     
 
 
         
