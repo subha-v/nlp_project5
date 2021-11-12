@@ -27,6 +27,8 @@ class Vocabulary:
             self.word_to_count[word] = 1
             self.index_to_word[self.num_words] = word # inverse mapping
             self.num_words += 1
+
+
     def add_phrase(self, phrase):
         words = phrase.split(" ")
         for word in words:
@@ -35,18 +37,36 @@ class Vocabulary:
 
 def create_sanitized_dataset(dataset_path):
     lines = open(dataset_path, encoding ='utf-8').read().strip().split("\n")
-    n = 8
+
     pairs = [[normalize_word(word) for word in line.split('\t')] for line in lines]
     with open('data/eng_fr_train.txt', 'w') as f:
         with open('data/eng_fr_val.txt', 'w') as f2:
             for pair in pairs:
-                if(len(pair[0].split(' ')) !=8 ): # we need all the sentences to have the same length to stack them
-                    continue
+                #if(len(pair[0].split(' ')) !=8 ): # we need all the sentences to have the same length to stack them
+                    #continue
                 if(random.random() < 0.8):
 
                     f.write(f"{pair[0]}\t{pair[1]}\n")
                 else:
                     f2.write(f"{pair[0]}\t{pair[1]}\n")
+
+def create_pairs(dataset_path):
+    lines = open(dataset_path, encoding ='utf-8').read().strip().split("\n")
+
+    pairs = [[normalize_word(word) for word in line.split('\t')] for line in lines]
+    with open("data/eng_fr_pairs.txt", 'w') as f:
+        for pair in pairs:
+            f.write(f"{pair[0]}\t{pair[1]}\n")
+
+def load_vocabs(input_vocab, target_vocab):
+    lines = open('data/eng_fr_pairs.txt', encoding="utf-8").read().strip().split("\n")
+    pairs = [line.split('\t') for line in lines]
+    for input_phrase, target_phrase in pairs:
+        input_vocab.add_phrase(input_phrase)
+        target_vocab.add_phrase(target_phrase)
+
+    return input_vocab, target_vocab
+
 
 
 
@@ -71,10 +91,12 @@ class TranslationDataset:
         #elem for elem in lst if elem %2 == 0
         self.pairs = [pair for pair in pairs if self.is_simple_sentence(pair)]
         # this makes the pairs only the one with simple sentences
-        for input_pair, target_pair in pairs:
-            self.input_vocab.add_phrase(input_pair)
-            self.target_vocab.add_phrase(target_pair)
-            #this adds english and french words tot he inuput vocab and target vocab classes
+        # for input_pair, target_pair in pairs:
+        #     self.input_vocab.add_phrase(input_pair)
+        #     self.target_vocab.add_phrase(target_pair)
+        #     #this adds english and french words tot he inuput vocab and target vocab classes
+        self.input_vocab, self.target_vocab = load_vocabs(self.input_vocab, self.target_vocab)
+        # we call this on the input vocab and target vocab as we load the phrases and then store the input and target vocab in these variables
 
 
     def __len__(self):
@@ -115,9 +137,9 @@ class TranslationDataset:
 
 
     def indicies_to_sentence(self, indicies, vocab):
-        sentence = ""
-        for idx in indicies:
-            sentence+= vocab.index_to_word[idx]
+        sentence = "" + vocab.index_to_word[indicies[0]]
+        for i in range (1, len(indicies)):
+            sentence+= " " + vocab.index_to_word[indicies[i]]
 
         return sentence
 
